@@ -521,7 +521,7 @@ define_function char[STRING_RETURN_SIZE_LIMIT] fmt_date(char fmt[1024], slong u)
  * @param	yr		year
  * @param	days	amount of days since the beginning of the year
  */
-define_function unixtime_to_raw_values(slong u, integer hr, integer min, integer sec,
+define_function unixtime_to_raw_values(slong u, integer hrs, integer mins, integer secs,
 				integer month, integer dy, integer yr, integer days)
 {
 	stack_var integer	i
@@ -608,21 +608,21 @@ define_function unixtime_to_raw_values(slong u, integer hr, integer min, integer
 		}
 	}
 
-	hr = 0
+	hrs = 0
 	w2 = UNIXTIME_SECONDS_PER_HOUR
 	while (w >= UNIXTIME_SECONDS_PER_HOUR) {
-		hr++
+		hrs++
 		w = w - w2
 	}
 
-	min = 0
+	mins = 0
 	w2 = UNIXTIME_SECONDS_PER_MINUTE
 	while (w >= UNIXTIME_SECONDS_PER_MINUTE) {
-		min++
+		mins++
 		w = w - w2
 	}
 
-	sec = type_cast(w)
+	secs = type_cast(w)
 }
 
 /**
