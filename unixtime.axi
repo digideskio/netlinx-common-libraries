@@ -212,10 +212,9 @@ define_function slong unixtime_offset(char d[10], char t[8], slong offset)
 	}
 
 	// add a day due to this year being a leapyear?
-	work = date_to_year(d)
-	if (unixtime_year_is_leapyear(type_cast(work))) {
+	work = UNIXTIME_SECONDS_PER_DAY
+	if (unixtime_year_is_leapyear(type_cast(date_to_year(d)))) {
 		if (date_to_month(d) >= 3) {
-			work = UNIXTIME_SECONDS_PER_DAY
 			ret = ret + work
 		}
 	}
@@ -236,7 +235,12 @@ define_function slong unixtime_offset(char d[10], char t[8], slong offset)
 	ret = ret + time_to_second(t)
 
 	// apply offset
-	ret = ret + offset
+	work = abs_value(offset)
+	if (offset > 0) {
+		ret = ret + work
+	} else {
+		ret = ret - work
+	}
 
 	return ret
 }
@@ -260,7 +264,7 @@ define_function char[8] unixtime_to_netlinx_time(slong u)
  */
 define_function char[8] unixtime_to_netlinx_date(slong u)
 {
-	return fmt_date('m/d/y', u)
+	return fmt_date('m-d-y', u)
 }
 
 /**
@@ -271,7 +275,7 @@ define_function char[8] unixtime_to_netlinx_date(slong u)
  */
 define_function char[10] unixtime_to_netlinx_ldate(slong u)
 {
-	return fmt_date('m/d/Y', u)
+	return fmt_date('m-d-Y', u)
 }
 
 /**
@@ -526,21 +530,33 @@ define_function unixtime_to_raw_values(slong u, integer hr, integer min, integer
 	stack_var slong		w
 	stack_var slong		w2
 
+	stack_var integer   leap
+
 	// set working unit so we don't modify u
 	w = u
-
 	yr = 1970
-	while (w >= w2) {
+
+	w2 = UNIXTIME_SECONDS_PER_YEAR
+	while (w > w2) {
 		yr++
 
-		w2 = UNIXTIME_SECONDS_PER_YEAR
 		w = w - w2
 
 		// remove leap day if applicable
-		if (unixtime_year_is_leapyear(yr)) {
-			w2 = UNIXTIME_SECONDS_PER_DAY
-			w = w - w2
+		if (w > 5097600) {	// seconds to end of feb 28
+			if (unixtime_year_is_leapyear(yr)) {
+				w2 = UNIXTIME_SECONDS_PER_DAY
+				w = w - w2
+			}
 		}
+		
+		w2 = UNIXTIME_SECONDS_PER_YEAR
+	}
+
+	// get leapyear info for this year
+	leap = 0
+	if (unixtime_year_is_leapyear(yr)) {
+		leap = 1
 	}
 
 	days = 1
@@ -551,15 +567,15 @@ define_function unixtime_to_raw_values(slong u, integer hr, integer min, integer
 	}
 
 	month = 1
-	dy = 0
 
 	j = days
 	for (i = 1; i <= 12; i++) {
 		w2 = UNIXTIME_DAYS_PER_MONTH[i]
 		j = j - w2
+
 		if (i == 2) {
 			// test for leapyear
-			if (unixtime_year_is_leapyear(yr)) {
+			if (leap) {
 				j--
 			}
 		}
@@ -567,17 +583,27 @@ define_function unixtime_to_raw_values(slong u, integer hr, integer min, integer
 		if (j > 0) {
 			month++
 		} else {
+			if (i == 2) {
+				// re-add leapyear before calculating day
+				if (leap) {
+					j++
+				}
+			}
+
 			w2 = j + UNIXTIME_DAYS_PER_MONTH[i]
-			dy = dy + type_cast(w2)
+			dy = type_cast(w2)
 
 			// test for leapyear
-			if (unixtime_year_is_leapyear(yr)) {
+			if (leap && (month >= 3 || (month == 2 && dy == 29))) {
 				dy++
 			}
 
+			/*
 			if (dy > UNIXTIME_DAYS_PER_MONTH[i]) {
 				dy = dy - UNIXTIME_DAYS_PER_MONTH[i]
 			}
+			*/
+
 			break
 		}
 	}
